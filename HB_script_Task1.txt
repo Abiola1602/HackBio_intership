@@ -1,0 +1,153 @@
+
+# Project folder (microbe) was created and dirctory was changed to it
+mkdir microbe
+
+#A new directory called quality control report was created 
+mkdir qc_report
+
+# link to Download Dataset and text file was created to execute the download and output it in the folder qc_report
+#https://raw.githubusercontent.com/HackBio-Internship/2025_project_collection/refs/heads/main/SA_Polony_100_download.sh
+bash raw.sh
+
+#the quality of the reads were check 
+fastqc */.fastq.gz
+
+#quality control to trim the reads using fastp was done by creating a text file (trim.sh)  and was executed using bash trim.sh. The trimmed reads were output into trimmed_reads
+#!/bin/bash
+mkdir trimmed_reads
+SAMPLES=(
+  "SRR27013294_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013295_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013296_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013297_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013298_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013299_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013300_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013301_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013302_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013303_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013304_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013305_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017" 
+  "SRR27013306_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013307_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013308_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013309_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013310_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013311_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013312_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013313_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013314_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013315_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013316_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013317_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013318_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013319_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013320_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013321_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013322_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013323_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013324_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013325_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013326_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013327_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013328_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013329_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013330_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013331_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013332_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013333_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013334_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013335_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013336_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013337_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013338_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013339_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013340_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013341_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013342_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013343_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  
+)
+
+for SAMPLE in "${SAMPLES[@]}"; do
+
+  fastp \
+    -i "$PWD/${SAMPLE}_1.fastq.gz" \
+    -I "$PWD/${SAMPLE}_2.fastq.gz" \
+    -o "trimmed_reads/${SAMPLE}_1.fastq.gz" \
+    -O "trimmed_reads/${SAMPLE}_2.fastq.gz" \
+    --html "trimmed_reads/${SAMPLE}_fastp.html" 
+done
+
+# The quality of the reads were checked  
+
+# The trimmed reads were then assembled using SPAdes since the actual organism were not known. The text file Denovo.sh was created
+
+#!/bin/bash
+mkdir -p assembly
+
+SAMPLES=(
+  "SRR27013294_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013295_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013296_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013297_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013298_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013299_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013300_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013301_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013302_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013303_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013304_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013305_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013306_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013307_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013308_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013309_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013310_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013311_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013312_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013313_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013314_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013315_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013333_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013334_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013335_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013336_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013337_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013338_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013339_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013340_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013341_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013342_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+  "SRR27013343_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017"
+)
+
+for SAMPLE in "${SAMPLES[@]}"; do
+ 
+  spades.py \
+    -1 trimmed_reads/${SAMPLE}_1.fastq.gz \
+    -2 trimmed_reads/${SAMPLE}_2.fastq.gz \
+    -o assembly/${SAMPLE} \
+    --phred-offset 33 \
+    --careful \
+    -k 21,33,55,77 \
+    &> assembly/${SAMPLE}_spades.log
+
+  echo " Finished $SAMPLE. Results in assembly/${SAMPLE}"
+
+# The assembled graph was exported from the termina to our local machine and viwed using bandage. The quality of the assemblies were checked
+scp -r yossra_bioinformatics@135.181.163.242:/home/yossra_bioinformatics/Abiola/microbe/assembly/SRR27013294_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017/assembly_graph.fastg Abiola/
+
+# quality of the assemblies were assessed using quast.py and the result were output in quast_report
+quast.py assembly/*/contigs.fasta -o quast_report
+
+#A new directory called AMR was created 
+
+mkdir AMR
+
+#Abricate was use to determine if the isolates has antimicrobial resistance gene and the result was output into amr_tab.tab inside AMR folder
+
+abricate assembly/*/contigs.fasta > AMR/amr_tab.tab
+
+
+  
