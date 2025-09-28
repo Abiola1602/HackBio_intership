@@ -137,10 +137,12 @@ for SAMPLE in "${SAMPLES[@]}"; do
 
 # The assembled graph was exported from the termina to our local machine and viwed using bandage. The quality of the assemblies were checked
 scp -r yossra_bioinformatics@135.181.163.242:/home/yossra_bioinformatics/Abiola/microbe/assembly/SRR27013294_Genome_Sequencing_of_Listeria_monocytogenes_SA_outbreak_2017/assembly_graph.fastg Abiola/
+#The graph were checked for plasmids, transposon etc. A section of the assembled genome was highlighted and the nucleotides were copied. This was taking to NCBI blast, where the organism were identified validated with more than 90 % coverage.   
 
 # quality of the assemblies were assessed using quast.py and the result were output in quast_report
 quast.py assembly/*/contigs.fasta -o quast_report
 
+The assembled genome was assessed for Number and largest Contigs, N50, GC content and percentage coverage among others. 
 #A new directory called AMR was created 
 
 mkdir AMR
@@ -148,6 +150,14 @@ mkdir AMR
 #Abricate was use to determine if the isolates has antimicrobial resistance gene and the result was output into amr_tab.tab inside AMR folder
 
 abricate assembly/*/contigs.fasta > AMR/amr_tab.tab
+
+#The antimicrobial resistance genes were found on the file anr_tab.tab which contain two resistance genes: FosX (fosfomycin resistance thiol transferase) and Lincomycin resistance via ABC-F type ribosomal protection proteins.
+
+#Identification of virulence genes (hly, plcA, plcB, actA.) from Listeria monocytogenes, where the genome was scan against the VFDB virulence gene database
+abricate --db vfdb assemblies/contigs.fasta > virulence_report.tab
+
+
+
 
 
   
