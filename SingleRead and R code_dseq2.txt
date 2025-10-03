@@ -1,0 +1,302 @@
+
+#!/usr/bin/env bash
+curl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR128/097/SRR12808497/SRR12808497.fastq.gz -o SRR12808497_Arabidopsis_thaliana_stress_treatments.fastq.gz
+curl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR128/098/SRR12808498/SRR12808498.fastq.gz -o SRR12808498_Arabidopsis_thaliana_stress_treatments.fastq.gz
+curl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR128/099/SRR12808499/SRR12808499.fastq.gz -o SRR12808499_Arabidopsis_thaliana_stress_treatments.fastq.gz
+curl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR128/027/SRR12808527/SRR12808527.fastq.gz -o SRR12808527_Arabidopsis_thaliana_stress_treatments.fastq.gz
+curl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR128/028/SRR12808528/SRR12808528.fastq.gz -o SRR12808528_Arabidopsis_thaliana_stress_treatments.fastq.gz
+curl -L ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR128/029/SRR12808529/SRR12808529.fastq.gz -o SRR12808529_Arabidopsis_thaliana_stress_treatments.fastq.gz
+
+#run the script to download the sequence
+bash raw.sh
+
+# This script is used to perform quality control for our RNA-seq data for A. thaliana
+# create directories for output
+
+mkdir -p qc
+
+for filename in  raw/*.fastq.gz; do
+       fastqc -o qc/ $filename
+done
+
+#trimming files
+mkdir -p trim
+
+for filename in raw/*.fastq.gz; do
+    base=$(basename "$filename" .fastq.gz)
+    fastp -i "$filename" -o "trim/${base}_trim.fastq.gz" -h "trim/${base}_report.html"
+done
+
+#advisable to do qc on the trimmed files
+
+#!/bin/bash
+
+# 1. Download reference genome
+wget ftp://ftp.ensemblgenomes.ebi.ac.uk/pub/plants/release-62/fasta/arabidopsis_thaliana/dna/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz
+
+# 2. Unzip and rename
+gunzip Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz
+mv Arabidopsis_thaliana.TAIR10.dna.toplevel.fa A.thaliana.fa
+
+# 3. Create genome directory and move reference
+mkdir -p genome
+mv A.thaliana.fa genome/
+
+# 4. Build STAR genome index
+mkdir -p genome/genomeIndex
+STAR --runMode genomeGenerate \
+     --genomeDir genome/genomeIndex \
+     --genomeFastaFiles genome/A.thaliana.fa \
+     --runThreadN 8
+
+# 5. Create directory for STAR mapping output
+mkdir -p mapped
+
+# 6. Map reads (single-end example)
+for infile in trim/*.fastq.gz; do
+    base=$(basename "$infile" .fastq.gz)
+    STAR --genomeDir genome/genomeIndex \
+         --readFilesIn "$infile" \
+         --readFilesCommand zcat \
+         --runThreadN 8 \
+         --outFileNamePrefix mapped/${base}_ \
+         --outSAMtype BAM SortedByCoordinate
+done
+
+#Adjust 6 if reads are paired-end 
+
+#for r1 in trim/*_1.fastq.gz; do
+    base=$(basename "$r1" _1.fastq.gz)
+    r2="trim/${base}_2.fastq.gz"
+
+ #   STAR --genomeDir genome/genomeIndex \
+         --readFilesIn "$r1" "$r2" \
+         --readFilesCommand zcat \
+         --runThreadN 8 \
+         --outFileNamePrefix mapped/${base}_ \
+         --outSAMtype BAM SortedByCoordinate
+#done
+
+#featurecounts and reads
+mkdir counts
+
+#download genome annotation
+wget -nc ftp://ftp.ensemblgenomes.ebi.ac.uk/pub/plants/release-62/gff3/arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.62.gff3.gz
+
+#unzip the gff3 file
+gunzip Arabidopsis_thaliana.TAIR10.62.gff3.gz
+
+#rename the gff3 file to c_elegans.gff3
+# this is the file that will be used for featureCounts
+#mv Arabidopsis_thaliana.TAIR10.62.gff3 A_thaliana.gff3
+
+# Rename and move to genome folder
+mv Arabidopsis_thaliana.TAIR10.62.gff3 genome/A_thaliana.gff3
+# -O: count reads overlapping multiple features
+# -t: feature type to count (gene)
+# -g: attribute to group features (ID)
+# -a: annotation file (GFF3)
+# -o: output file
+
+#featureCounts -O -t gene -g ID -a genome/A_thaliana.gff3 -o counts/counts.txt IGV/*.bam
+
+featureCounts -O -t gene -g gene_id -a genome/A_thaliana.gff3 -o counts/counts.txt IGV/*.bam
+
+
+cd counts/
+
+#you would see a counts.txt file, transfer it to your local machine and we will use it for differential expression analysis on R
+
+#download the counts.txt
+scp -r yossra_bioinformatics@135.181.163.242:/home/yossra_bioinformatics/Abiola/RNA/plant/counts/counts.txt  Abiola
+
+R code for downstream analysis
+
+#install DESeq2
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("DESeq2")
+
+#Install pheatmap
+install.packages("pheatmap")
+
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+#Install apeglm
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("apeglm")
+
+### 1. Load libraries
+library(DESeq2)
+library(pheatmap)
+library(ggplot2)
+library(apeglm)   # needed for lfcShrink(type="apeglm")
+
+### 2. Import counts file
+c_e_count <- read.delim("counts_plant.txt", header = TRUE)
+
+# Set rownames to gene IDs
+rownames(c_e_count) <- c_e_count$Geneid
+
+# Keep only count columns (drop annotation columns)
+c_e_count <- c_e_count[ , 7:ncol(c_e_count)]
+
+### 3. Import metadata file
+c_e_meta <- read.delim("metadata.txt", header = TRUE, stringsAsFactors = FALSE)
+
+# Clean column names
+colnames(c_e_meta) <- trimws(colnames(c_e_meta))
+
+# Set rownames to sample IDs
+rownames(c_e_meta) <- c_e_meta$sample
+
+# Ensure Stress is a factor and set Control as reference
+c_e_meta$Stress <- factor(c_e_meta$Stress)
+c_e_meta$Stress <- relevel(c_e_meta$Stress, ref = "Control")
+
+# Reorder metadata to match counts
+c_e_meta <- c_e_meta[colnames(c_e_count), ]
+
+### 4. Create DESeq2 dataset
+dds <- DESeqDataSetFromMatrix(
+  countData = c_e_count,
+  colData   = c_e_meta,
+  design    = ~ Stress
+)
+
+### 5. Run DESeq2
+dds <- DESeq(dds)
+
+### 6. Extract results
+resultsNames(dds)    #List available coefficients
+
+res <- results(dds, name = "Stress_UV.C.Treated_vs_Control")
+
+
+# Apply log2 fold change shrinkage for better interpretability
+res <- lfcShrink(dds, coef="Stress_UV.C.Treated_vs_Control", type="apeglm")
+
+### 7. Save results to CSV
+res_df <- as.data.frame(res)
+res_df <- na.omit(res_df)  # remove NA rows
+write.csv(res_df, file = "DESeq2_results.csv", row.names = TRUE)
+
+### 8. QC Plots
+
+# MA plot
+plotMA(res, ylim = c(-5, 5))
+
+# Variance stabilizing transformation for PCA & clustering
+vsd <- vst(dds, blind = FALSE)
+
+# PCA plot
+plotPCA(vsd, intgroup = "Stress")
+
+
+# Sample distance matrix
+sampleDists <- dist(t(assay(vsd)))
+sampleDistMatrix <- as.matrix(sampleDists)
+
+# Heatmap with proper labeling
+pheatmap(sampleDistMatrix,
+         labels_row = colnames(vsd),
+         labels_col = colnames(vsd),
+         main = "Sample-to-Sample Distances")
+
+OR- to add experimental groups (Stress) as colors on the heatmap
+
+annotation <- data.frame(Stress = c_e_meta$Stress)
+rownames(annotation) <- rownames(c_e_meta)
+
+pheatmap(sampleDistMatrix,
+         annotation_col = annotation,
+         main = "Sample-to-Sample Distances with Group Annotation")
+
+
+# Volcano plot
+ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj))) +
+  geom_point(aes(color = padj < 0.05)) +
+  scale_color_manual(values = c("black", "red")) +
+  theme_minimal() +
+  labs(title = "Volcano Plot",
+       x = "Log2 Fold Change",
+       y = "-Log10 Adjusted p-value")
+
+
+#Extract significant genes
+# Convert results to a data frame
+res_df <- as.data.frame(res)
+res_df <- na.omit(res_df)
+
+# Significant genes at padj < 0.05
+sig_genes <- res_df[res_df$padj < 0.05, ]
+
+# Upregulated (log2FC > 1)
+up_genes <- sig_genes[sig_genes$log2FoldChange > 1, ]
+
+# Downregulated (log2FC < -1)
+down_genes <- sig_genes[sig_genes$log2FoldChange < -1, ]
+
+# Counts
+cat("Total significant genes:", nrow(sig_genes), "\n")
+cat("Upregulated:", nrow(up_genes), "\n")
+cat("Downregulated:", nrow(down_genes), "\n")
+
+
+#Save to CSV files
+write.csv(sig_genes,  "DESeq2_significant_genes.csv")
+write.csv(up_genes,   "DESeq2_upregulated_genes.csv")
+write.csv(down_genes, "DESeq2_downregulated_genes.csv")
+
+#visualize with a barplot
+library(ggplot2)
+
+gene_counts <- data.frame(
+  Category = c("Upregulated", "Downregulated"),
+  Count = c(nrow(up_genes), nrow(down_genes))
+)
+
+ggplot(gene_counts, aes(x = Category, y = Count, fill = Category)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Differentially Expressed Genes",
+       y = "Number of Genes") +
+  scale_fill_manual(values = c("Upregulated" = "red", "Downregulated" = "blue"))
+
+
+
+#Removing the prefix gene
+# Extract significant genes (already done above)
+sig_genes <- rownames(sig_genes)
+
+# Remove "gene:" prefix
+sig_genes <- gsub("gene:", "", sig_genes)
+
+# Save cleaned gene list
+write.table(sig_genes, "sig_genes.txt",
+            quote = FALSE, row.names = FALSE, col.names = FALSE)
+#Code to clean upregulated & downregulated gene IDs
+# Upregulated genes
+up_gene_ids <- rownames(up_genes)
+up_gene_ids <- gsub("gene:", "", up_gene_ids)
+
+# Downregulated genes
+down_gene_ids <- rownames(down_genes)
+down_gene_ids <- gsub("gene:", "", down_gene_ids)
+
+# Save as text files (one per line, no quotes/headers)
+write.table(up_gene_ids, "upregulated_genes.txt",
+            quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+write.table(down_gene_ids, "downregulated_genes.txt",
+            quote = FALSE, row.names = FALSE, col.names = FALSE)
+ 
+
+
+
+
+
